@@ -1,15 +1,40 @@
 const express = require('express');
-const pinoHttp = require('pino-http');
-const logger = require('./logger');
+const cors = require('cors');
+const helmet = require('helmet');
+const compression = require('compression');
+const logger = require('./logger'); // Ensure the logger is imported
 
-const app = express();
+const app = express(); // Create an Express app instance
 
-// Use Pino HTTP middleware for logging HTTP requests and responses
-app.use(pinoHttp({ logger }));
+// Use middleware for security, CORS, compression, and logging
+app.use(helmet());
+app.use(cors());
+app.use(compression());
+app.use(require('pino-http')({ logger })); // Pino HTTP logging middleware
 
-// Example route
+// Define a health check route
 app.get('/', (req, res) => {
-  res.status(200).json({ message: 'Hello, world!' });
+  res.status(200).json({
+    status: 'ok',
+    message: 'Welcome to the Fragments API!',
+  });
 });
 
-module.exports = app;
+// Middleware for handling 404 errors
+app.use((req, res) => {
+  res.status(404).json({
+    status: 'error',
+    message: 'Not Found',
+  });
+});
+
+// Error-handling middleware
+app.use((err, req, res, next) => {
+  logger.error(err); // Log the error
+  res.status(500).json({
+    status: 'error',
+    message: 'Internal Server Error',
+  });
+});
+
+module.exports = app; // Export the app instance
