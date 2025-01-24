@@ -6,31 +6,24 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "lint": "eslint \"./src/**/*.js\"",
-    "start": "node src/server.js",
-    "dev": "LOG_LEVEL=debug nodemon ./src/server.js --watch src",
-    "debug": "LOG_LEVEL=debug nodemon --inspect=0.0.0.0:9229 ./src/server.js --watch src"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/stebin1998/fragments.git"
-  },
-  "author": "Stebin",
-  "license": "UNLICENSED",
-  "devDependencies": {
-    "@eslint/js": "^9.18.0",
-    "eslint": "^9.18.0",
-    "globals": "^15.14.0",
-    "nodemon": "^3.1.9",
-    "prettier": "3.4.2"
+    "start": "node src/index.js",
+    "dev": "LOG_LEVEL=debug nodemon ./src/index.js --watch src",
+    "debug": "LOG_LEVEL=debug nodemon --inspect=0.0.0.0:9229 ./src/index.js --watch src"
   },
   "dependencies": {
     "compression": "^1.7.5",
     "cors": "^2.8.5",
+    "dotenv": "^16.0.3",
     "express": "^4.21.2",
     "helmet": "^8.0.0",
+    "passport": "^0.6.0",
+    "passport-http-bearer": "^1.0.1",
     "pino": "^9.6.0",
-    "pino-http": "^10.4.0",
-    "pino-pretty": "^13.0.0",
-    "stoppable": "^1.1.0"
+    "pino-http": "^10.4.0"
+  },
+  "devDependencies": {
+    "eslint": "^9.18.0",
+    "nodemon": "^3.1.9",
+    "prettier": "3.4.2"
   }
 }
