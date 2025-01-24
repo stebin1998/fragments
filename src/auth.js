@@ -1,32 +1,67 @@
+// Configure a JWT token strategy for Passport based on
+// Identity Token provided by Cognito. The token will be
+// parsed from the Authorization header (i.e., Bearer Token).
+
 const passport = require('passport');
 const BearerStrategy = require('passport-http-bearer').Strategy;
+const { CognitoJwtVerifier } = require('aws-jwt-verify');
+
 const logger = require('./logger');
 
-let useMockAuth = process.env.USE_MOCK_AUTH === 'true';
+// Create a Cognito JWT Verifier, which will confirm that any JWT we
+// get from a user is valid and something we can trust. See:
+// https://github.com/awslabs/aws-jwt-verify#cognitojwtverifier-verify-parameters
+const jwtVerifier = CognitoJwtVerifier.create({
+  // These variables must be set in the .env
+  userPoolId: process.env.AWS_COGNITO_POOL_ID,
+  clientId: process.env.AWS_COGNITO_CLIENT_ID,
+  // We expect an Identity Token (vs. Access Token)
+  tokenUse: 'id',
+});
 
-if (useMockAuth) {
+// Later we'll use other auth configurations, so it's important to log what's happening
+logger.info('Configured to use AWS Cognito for Authorization');
+
+// At startup, download and cache the public keys (JWKS) we need in order to
+// verify our Cognito JWTs, see https://auth0.com/docs/secure/tokens/json-web-tokens/json-web-key-sets
+// You can try this yourself using:
+// curl https://cognito-idp.us-east-1.amazonaws.com/<user-pool-id>/.well-known/jwks.json
+jwtVerifier
+  .hydrate()
+  .then(() => {
+    logger.info('Cognito JWKS successfully cached');
+  })
+  .catch((err) => {
+    logger.error({ err }, 'Unable to cache Cognito JWKS');
+  });
+
+// Mock Authentication Middleware (use this temporarily for development)
+const mockAuthenticate = () => (req, res, next) => {
   logger.warn('Using mock authentication for development');
-}
-
-const mockUsers = {
-  'mock-user@example.com': {
-    email: 'mock-user@example.com',
-    name: 'Mock User',
-  },
+  req.user = 'mock-user@example.com'; // Set a fake user for development
+  next();
 };
 
 module.exports.strategy = () =>
-  useMockAuth
-    ? new BearerStrategy((token, done) => {
-        const user = mockUsers[token];
-        if (!user) {
-          return done(null, false);
-        }
-        return done(null, user);
-      })
-    : new BearerStrategy((token, done) => {
-        logger.error('Real authentication is not implemented yet.');
-        done(null, false);
-      });
+  // For our Passport authentication strategy, we'll look for the Bearer Token
+  // in the Authorization header, then verify that with our Cognito JWT Verifier.
+  new BearerStrategy(async (token, done) => {
+    try {
+      // Verify this JWT
+      const user = await jwtVerifier.verify(token);
+      logger.debug({ user }, 'verified user token');
 
-module.exports.authenticate = () => passport.authenticate('bearer', { session: false });
+      // Create a user, but only bother with their email. We could
+      // also do a lookup in a database, but we don't need it.
+      done(null, user.email);
+    } catch (err) {
+      logger.error({ err, token }, 'could not verify token');
+      done(null, false);
+    }
+  });
+
+// Use this mock middleware temporarily to bypass authentication
+// Replace this with `passport.authenticate('bearer', { session: false })` for production
+module.exports.authenticate = () => mockAuthenticate();
+
+
